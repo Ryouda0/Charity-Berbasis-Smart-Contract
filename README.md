@@ -4,16 +4,13 @@ CharityChain adalah aplikasi donasi berbasis blockchain (DApp) yang memungkinkan
 
 🚀 Fitur Utama
 
-Transparansi Penuh: Setiap donasi dicatat secara permanen di blockchain.
-+1
-
-
-Keamanan Dana: Dana hanya dapat ditarik oleh pemilik proyek (owner) jika target donasi telah tercapai.
-
-
-Batas Waktu Otomatis: Kontrak memiliki masa aktif yang ditentukan saat pembuatan.
-
-Progress Tracker: Visualisasi persentase donasi yang terkumpul secara real-time.
+    1. Transparansi Penuh: Setiap donasi dicatat secara permanen di blockchain.
+    
+    2. Keamanan Dana: Dana hanya dapat ditarik oleh pemilik proyek (owner) jika target donasi telah tercapai.
+    
+    3. Batas Waktu Otomatis: Kontrak memiliki masa aktif yang ditentukan saat pembuatan.
+    
+    4. Progress Tracker: Visualisasi persentase donasi yang terkumpul secara real-time.
 
 🛠️ Arsitektur Kontrak (Charity.sol)
 Kontrak ini mengelola logika inti donasi:
@@ -97,4 +94,5 @@ Error INSUFFICIENT_FUNDS: Pastikan akun MetaMask yang aktif adalah akun yang mem
 Error Nonce too high: Jika transaksi "pending" terus, masuk ke MetaMask > Settings > Advanced > Clear activity tab data (Reset Account).
 
 Ethers.js gagal dimuat: Pastikan komputer terhubung ke internet untuk mengambil library dari CDN atau periksa kembali link <script> di index.html.
+
 
