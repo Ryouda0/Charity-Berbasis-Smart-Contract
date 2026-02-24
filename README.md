@@ -58,13 +58,13 @@ Buka MetaMask > Klik Jaringan (atas) > Add Network > Add a network manually.
 
 Isi data berikut:
 
-    >Network Name: Hardhat Local
+    1. Network Name: Hardhat Local
     
-    >New RPC URL: http://127.0.0.1:8545
+    2. New RPC URL: http://127.0.0.1:8545
     
-    >Chain ID: 31337
+    3. Chain ID: 31337
     
-    >Currency Symbol: ETH
+    4. Currency Symbol: ETH
 
 
 Langkah 2: Impor Akun Uji Coba
@@ -95,4 +95,5 @@ Pada website CharityChain, klik Hubungkan Wallet.
     Ethers.js gagal dimuat: Pastikan komputer terhubung ke internet untuk mengambil library dari CDN atau periksa kembali link <script> di index.html.
     
     
+
 
