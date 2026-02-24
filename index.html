@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Charity DApp | Transparansi Donasi</title>  
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <style>body { font-family: 'Inter', sans-serif; }</style>
+</head>
+<body class="bg-gray-50 text-gray-900 min-h-screen">
+    <nav class="bg-white border-b border-gray-200 py-4 px-8 flex justify-between items-center shadow-sm">
+        <h1 class="text-xl font-bold tracking-tight text-blue-600">CharityChain</h1>
+        <button id="connectButton" class="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2 rounded-full font-semibold shadow-md transition-all active:scale-95">
+            Hubungkan Wallet
+        </button>
+    </nav>
+
+    <main class="max-w-4xl mx-auto mt-12 px-6">
+        <div class="text-center mb-12">
+            <h2 class="text-4xl font-extrabold mb-4 text-gray-900">Bantu Sesama Secara Transparan</h2>
+            <p class="text-gray-600 max-w-lg mx-auto">Setiap donasi Anda tercatat secara permanen di blockchain.</p>
+        </div>
+
+        <div class="grid md:grid-cols-2 gap-8">
+            <div class="bg-white p-8 rounded-2xl shadow-xl border border-gray-100">
+                <h3 class="text-lg font-bold mb-6 flex items-center"><span class="w-2 h-2 bg-green-500 rounded-full mr-2"></span> Status Donasi</h3>
+                <div class="space-y-4">
+                    <div><p class="text-sm text-gray-500">Total Terkumpul</p><p id="totalBalance" class="text-3xl font-bold">0.00 ETH</p></div>
+                    <div class="w-full bg-gray-100 rounded-full h-2"><div id="progressBar" class="bg-blue-600 h-2 rounded-full transition-all" style="width: 0%"></div></div>
+                    <p id="targetStatus" class="text-sm text-gray-600">Target: 5 ETH</p>
+                </div>
+            </div>
+
+            <div class="bg-white p-8 rounded-2xl shadow-xl border border-gray-100">
+                <h3 class="text-lg font-bold mb-6">Kirim Donasi</h3>
+                <div class="space-y-4">
+                    <input type="number" id="amountInput" step="0.01" class="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-blue-500 outline-none" placeholder="Jumlah (ETH)">
+                    <button id="donateButton" class="w-full bg-gray-900 hover:bg-gray-800 text-white font-bold py-3 rounded-lg shadow-lg transition-all active:scale-95">Donasi Sekarang</button>
+                    <p id="accountArea" class="text-xs text-center text-gray-400 mt-2 truncate">Wallet tidak terhubung</p>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        const connectButton = document.getElementById('connectButton');
+        const donateButton = document.getElementById('donateButton');
+        
+        const contractAddress = "0x5FbDB2315678afecb367f032d93F642f64180aa3"; 
+ const abi = [
+    // Fungsi view
+    "function owner() view returns (address)",
+    "function targetAmount() view returns (uint256)",
+    "function totalDonations() view returns (uint256)",
+    "function deadline() view returns (uint256)",
+    "function isCompleted() view returns (bool)",
+    "function getContractBalance() view returns (uint256)",
+    "function donors(address) view returns (uint256 amount, uint256 timestamp)",
+    
+    // Fungsi transaksi
+    "function donate() payable",
+    "function withdrawFunds()"
+];
+
+        async function updateUI() {
+    if (typeof window.ethereum !== "undefined" && typeof ethers !== "undefined") {
+        const provider = new ethers.providers.Web3Provider(window.ethereum);
+        const contract = new ethers.Contract(contractAddress, abi, provider);
+        try {
+            const balance = await contract.getContractBalance();
+            const target = await contract.targetAmount();
+            const deadline = await contract.deadline();
+            const isCompleted = await contract.isCompleted();
+            
+            const fmtBalance = ethers.utils.formatEther(balance);
+            const fmtTarget = ethers.utils.formatEther(target);
+            
+            document.getElementById('totalBalance').innerText = fmtBalance + " ETH";
+            document.getElementById('targetStatus').innerHTML = 
+                `Target: ${fmtTarget} ETH | Deadline: ${new Date(deadline.toNumber() * 1000).toLocaleDateString()}`;
+            
+            const percentage = (parseFloat(fmtBalance) / parseFloat(fmtTarget)) * 100;
+            document.getElementById('progressBar').style.width = Math.min(percentage, 100) + "%";
+            
+            if (isCompleted) {
+                document.getElementById('targetStatus').innerHTML += ' | ✅ Selesai';
+            }
+        } catch (e) { console.error("Update UI Gagal:", e); }
+    }
+}
+
+        async function connect() {
+            if (typeof window.ethereum !== "undefined") {
+                try {
+                    const accounts = await ethereum.request({ method: "eth_requestAccounts" });
+                    connectButton.innerText = "Terhubung";
+                    connectButton.classList.replace('bg-blue-600', 'bg-green-600');
+                    document.getElementById("accountArea").innerText = "Account: " + accounts[0];
+                    updateUI();
+                } catch (e) { console.error("Koneksi ditolak:", e); }
+            } else { alert("Pasang MetaMask!"); }
+        }
+
+        async function donate() {
+    const amount = document.getElementById("amountInput").value;
+    if(!amount || amount <= 0) return alert("Jumlah tidak valid!");
+    
+    const provider = new ethers.providers.Web3Provider(window.ethereum);
+    const signer = provider.getSigner();
+    const account = await signer.getAddress();
+    
+    try {
+        // Cek saldo terlebih dahulu
+        const balance = await provider.getBalance(account);
+        const amountWei = ethers.utils.parseEther(amount);
+        
+        // Estimasi gas (asumsi 100,000 gas dengan gas price 50 gwei)
+        const gasEstimate = ethers.utils.parseEther("0.005"); // 0.005 ETH untuk gas
+        
+        if (balance.lt(amountWei.add(gasEstimate))) {
+            const balanceEth = ethers.utils.formatEther(balance);
+            throw new Error(`Saldo tidak cukup! Anda memiliki ${balanceEth} ETH tapi membutuhkan ${amount} ETH + gas`);
+        }
+        
+        donateButton.innerText = "Memproses...";
+        const contract = new ethers.Contract(contractAddress, abi, signer);
+        const tx = await contract.donate({ value: amountWei });
+        await tx.wait();
+        alert("Donasi Berhasil!");
+        updateUI();
+    } catch (e) { 
+        alert("Gagal: " + e.message); 
+        console.error(e); 
+    } finally { 
+        donateButton.innerText = "Donasi Sekarang"; 
+    }
+}
+
+async function checkNetwork() {
+    const provider = new ethers.providers.Web3Provider(window.ethereum);
+    const network = await provider.getNetwork();
+    
+    if (network.chainId === 1) {
+        alert("PERHATIAN: Anda terhubung ke Ethereum Mainnet! Ini akan menggunakan uang nyata.");
+    } else if (network.chainId === 31337) {
+        console.log("Terhubung ke Hardhat Local Network");
+    }
+}
+
+// Panggil setelah connect
+async function connect() {
+    if (typeof window.ethereum !== "undefined") {
+        try {
+            const accounts = await ethereum.request({ method: "eth_requestAccounts" });
+            connectButton.innerText = "Terhubung";
+            connectButton.classList.replace('bg-blue-600', 'bg-green-600');
+            document.getElementById("accountArea").innerText = "Account: " + accounts[0];
+            await checkNetwork(); // Tambahkan ini
+            updateUI();
+        } catch (e) { console.error("Koneksi ditolak:", e); }
+    } else { alert("Pasang MetaMask!"); }
+}
+
+// Tambahkan fungsi ini ke dalam script
+async function switchToHardhatNetwork() {
+    try {
+        // Coba switch ke Hardhat network
+        await window.ethereum.request({
+            method: 'wallet_switchEthereumChain',
+            params: [{ chainId: '0x7A69' }], // 31337 dalam hex = 0x7A69
+        });
+    } catch (switchError) {
+        // Jika network belum ditambahkan
+        if (switchError.code === 4902) {
+            try {
+                await window.ethereum.request({
+                    method: 'wallet_addEthereumChain',
+                    params: [{
+                        chainId: '0x7A69',
+                        chainName: 'Hardhat Local',
+                        rpcUrls: ['http://127.0.0.1:8545'],
+                        nativeCurrency: {
+                            name: 'ETH',
+                            symbol: 'ETH',
+                            decimals: 18
+                        }
+                    }],
+                });
+            } catch (addError) {
+                console.error('Gagal menambah network:', addError);
+            }
+        }
+    }
+}
+
+// Tambahkan fungsi untuk cek dan switch jaringan
+async function ensureCorrectNetwork() {
+    if (typeof window.ethereum !== "undefined") {
+        try {
+            // Coba switch ke Hardhat network (chainId: 31337)
+            await window.ethereum.request({
+                method: 'wallet_switchEthereumChain',
+                params: [{ chainId: '0x7A69' }], // 31337 in hex
+            });
+            console.log("Berhasil switch ke Hardhat network");
+            return true;
+        } catch (switchError) {
+            if (switchError.code === 4902) {
+                try {
+                    await window.ethereum.request({
+                        method: 'wallet_addEthereumChain',
+                        params: [{
+                            chainId: '0x7A69',
+                            chainName: 'Hardhat Local',
+                            rpcUrls: ['http://127.0.0.1:8545'],
+                            nativeCurrency: {
+                                name: 'ETH',
+                                symbol: 'ETH',
+                                decimals: 18
+                            }
+                        }],
+                    });
+                    return true;
+                } catch (addError) {
+                    console.error('Gagal menambah network:', addError);
+                    return false;
+                }
+            }
+        }
+    }
+    return false;
+}
+
+// Panggil fungsi ini setelah connect
+async function connect() {
+    if (typeof window.ethereum !== "undefined") {
+        try {
+            const accounts = await ethereum.request({ method: "eth_requestAccounts" });
+            
+            // Tambahkan ini - switch ke Hardhat network
+            await switchToHardhatNetwork();
+            
+            connectButton.innerText = "Terhubung";
+            connectButton.classList.replace('bg-blue-600', 'bg-green-600');
+            document.getElementById("accountArea").innerText = "Account: " + accounts[0];
+            updateUI();
+        } catch (e) { 
+            console.error("Koneksi ditolak:", e); 
+        }
+    } else { 
+        alert("Pasang MetaMask!"); 
+    }
+}
+        connectButton.onclick = connect;
+        donateButton.onclick = donate;
+        window.addEventListener('load', updateUI);
+    </script>
+</body>
+</html>
