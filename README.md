@@ -1,4 +1,5 @@
-募 CharityChain - Decentralized Donation App
+# CharityChain - Decentralized Donation App
+
 CharityChain adalah aplikasi donasi berbasis blockchain (DApp) yang memungkinkan penggalangan dana secara transparan. Proyek ini menggunakan Solidity untuk Smart Contract, Hardhat sebagai lingkungan pengembangan, dan Ethers.js untuk menghubungkan antarmuka web (Frontend) ke Blockchain.
 
 🚀 Fitur Utama
@@ -96,3 +97,4 @@ Error INSUFFICIENT_FUNDS: Pastikan akun MetaMask yang aktif adalah akun yang mem
 Error Nonce too high: Jika transaksi "pending" terus, masuk ke MetaMask > Settings > Advanced > Clear activity tab data (Reset Account).
 
 Ethers.js gagal dimuat: Pastikan komputer terhubung ke internet untuk mengambil library dari CDN atau periksa kembali link <script> di index.html.
+
