@@ -3,7 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Charity DApp | Transparansi Donasi</title>  
+    <title>Charity DApp | Transparansi Donasi</title>
+    <link rel="icon" type="image/png" href="D:\NFT\nftseednest.jpg">
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
@@ -11,7 +12,9 @@
 </head>
 <body class="bg-gray-50 text-gray-900 min-h-screen">
     <nav class="bg-white border-b border-gray-200 py-4 px-8 flex justify-between items-center shadow-sm">
-        <h1 class="text-xl font-bold tracking-tight text-blue-600">CharityChain</h1>
+        <h1 class="text-2xl font-bold tracking-tight text-blue-600">CharityChain</h1>
+    
+
         <button id="connectButton" class="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2 rounded-full font-semibold shadow-md transition-all active:scale-95">
             Hubungkan Wallet
         </button>
@@ -19,8 +22,8 @@
 
     <main class="max-w-4xl mx-auto mt-12 px-6">
         <div class="text-center mb-12">
-            <h2 class="text-4xl font-extrabold mb-4 text-gray-900">Bantu Sesama Secara Transparan</h2>
-            <p class="text-gray-600 max-w-lg mx-auto">Setiap donasi Anda tercatat secara permanen di blockchain.</p>
+            <h2 class="text-4xl font-extrabold mb-4 text-gray-900">Sistem Donasi Berbasis Blockchain</h2>
+            <p class="text-gray-600 max-w-lg mx-auto">Transparansi dengan sistem yang tersdesentralisasi</p>
         </div>
 
         <div class="grid md:grid-cols-2 gap-8">
@@ -42,6 +45,23 @@
                 </div>
             </div>
         </div>
+        <div class="mt-12 bg-white p-8 rounded-2xl shadow-xl border border-gray-100">
+    <h3 class="text-lg font-bold mb-6 flex items-center">
+        <span class="w-2 h-2 bg-blue-500 rounded-full mr-2"></span> Riwayat
+    </h3>
+    <div class="overflow-x-auto">
+        <table class="w-full text-left">
+            <thead>
+                <tr class="text-gray-400 text-sm border-b">
+                    <th class="pb-4 font-semibold">Alamat Wallet</th>
+                    <th class="pb-4 font-semibold text-right">Jumlah Donasi</th>
+                </tr>
+            </thead>
+            <tbody id="donorList">
+                </tbody>
+        </table>
+    </div>
+</div>
     </main>
 
     <script>
@@ -50,19 +70,44 @@
         
         const contractAddress = "0x5FbDB2315678afecb367f032d93F642f64180aa3"; 
  const abi = [
-    // Fungsi view
-    "function owner() view returns (address)",
-    "function targetAmount() view returns (uint256)",
-    "function totalDonations() view returns (uint256)",
-    "function deadline() view returns (uint256)",
-    "function isCompleted() view returns (bool)",
-    "function getContractBalance() view returns (uint256)",
-    "function donors(address) view returns (uint256 amount, uint256 timestamp)",
+    "function donate() public payable",
+    "function getContractBalance() public view returns (uint256)",
+    "function targetAmount() public view returns (uint256)",
+    "function deadline() public view returns (uint256)",
+    "event Donated(address indexed donor, uint256 amount)",
+    "function isCompleted() public view returns (bool)",
     
-    // Fungsi transaksi
-    "function donate() payable",
-    "function withdrawFunds()"
+    // Tambahkan ini
 ];
+
+async function loadDonorHistory() {
+    const provider = new ethers.providers.Web3Provider(window.ethereum);
+    const contract = new ethers.Contract(contractAddress, abi, provider);
+    const donorListUI = document.getElementById('donorList');
+    
+    // Mengambil log event "Donated" dari awal block (0)
+    const filter = contract.filters.Donated();
+    const logs = await contract.queryFilter(filter, 0, "latest");
+    
+    donorListUI.innerHTML = ""; // Bersihkan list lama
+
+    logs.reverse().forEach(log => {
+        const { donor, amount } = log.args;
+        const row = `
+            <tr class="border-b last:border-0">
+                <td class="py-4 text-sm font-mono text-blue-500 truncate max-w-[200px]">${donor}</td>
+                <td class="py-4 text-right font-bold">${ethers.utils.formatEther(amount)} ETH</td>
+            </tr>
+        `;
+        donorListUI.innerHTML += row;
+    });
+}
+
+// Panggil fungsi ini di dalam updateUI() atau window.onload
+window.addEventListener('load', () => {
+    updateUI();
+    loadDonorHistory();
+});
 
         async function updateUI() {
     if (typeof window.ethereum !== "undefined" && typeof ethers !== "undefined") {
@@ -91,17 +136,45 @@
     }
 }
 
-        async function connect() {
-            if (typeof window.ethereum !== "undefined") {
-                try {
-                    const accounts = await ethereum.request({ method: "eth_requestAccounts" });
-                    connectButton.innerText = "Terhubung";
-                    connectButton.classList.replace('bg-blue-600', 'bg-green-600');
-                    document.getElementById("accountArea").innerText = "Account: " + accounts[0];
-                    updateUI();
-                } catch (e) { console.error("Koneksi ditolak:", e); }
-            } else { alert("Pasang MetaMask!"); }
+       async function connect() {
+    console.log("Mencoba menghubungkan...");
+    if (typeof window.ethereum !== "undefined" && window.ethers) {
+        try {
+            // 1. Permintaan akses akun
+            const accounts = await window.ethereum.request({ method: "eth_requestAccounts" });
+            const walletAddress = accounts[0];
+
+            // 2. Proses Verifikasi Tanda Tangan
+            const provider = new window.ethers.providers.Web3Provider(window.ethereum);
+            const signer = provider.getSigner();
+            
+            // Pesan yang akan muncul di MetaMask
+            const message = `Selamat datang di CharityChain!\n\nKlik 'Sign' untuk memverifikasi kepemilikan wallet Anda.\n\nTimestamp: ${new Date().getTime()}`;
+            
+            try {
+                // Munculkan pop-up tanda tangan di MetaMask
+                const signature = await signer.signMessage(message);
+                console.log("Verifikasi Berhasil. Signature:", signature);
+
+                // 3. Update UI jika verifikasi sukses
+                connectButton.innerText = "Terhubung & Terverifikasi";
+                connectButton.classList.replace('bg-blue-600', 'bg-green-600');
+                document.getElementById("accountArea").innerText = "Account: " + walletAddress;
+                
+                await switchToHardhatNetwork();
+                updateUI();
+                loadDonorHistory(); // Fungsi untuk monitoring donatur
+            } catch (signError) {
+                console.error("User menolak tanda tangan:", signError);
+                alert("Verifikasi gagal! Anda harus menandatangani pesan untuk masuk.");
+            }
+        } catch (error) {
+            console.error("Koneksi ditolak:", error);
         }
+    } else {
+        alert("MetaMask tidak ditemukan!");
+    }
+}
 
         async function donate() {
     const amount = document.getElementById("amountInput").value;
